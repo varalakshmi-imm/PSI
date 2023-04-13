@@ -1,4 +1,5 @@
-namespace PSI;
+﻿namespace PSI;
+using static System.Console;
 using static Token.E;
 
 // Represents a PSI language Token
@@ -38,9 +39,33 @@ public class Token {
    // Utility function used to echo an error to the console
    public void PrintError () {
       if (Kind != ERROR) throw new Exception ("PrintError called on a non-error token");
-      Console.ForegroundColor = ConsoleColor.Yellow;
-      Console.WriteLine ($"At line {Line}, column {Column} of {Source.FileName}: {Text}");
-      Console.ResetColor ();
+      int start = Line - 3, end = Line + 2;
+      OutputEncoding = Encoding.Unicode;
+      var hdr = $"File: {Source.FileName}";
+      WriteLine (hdr);
+      WriteLine (new string ('─', hdr.Length));
+      for (int i = start; i < end; i++) {
+         if (i < 0 || i >= Source.Lines.Length) continue;
+         var line = $"{i + 1,4}│" + Source.Lines[i];
+         WriteLine (line);
+         if (i == Line  - 1) { // This is the line that has error
+            int col = Column + 5; // As we have added line number as four digits and the vertical line
+            ForegroundColor = ConsoleColor.Yellow;
+            var err = new string (' ', line.Length).ToCharArray ();
+            err[col - 1] = '^';
+            WriteLine (new string (err));
+            CursorLeft = GetClampedColumn (col, Text.Length);
+            WriteLine (Text);
+            ResetColor ();
+         }
+      }
+
+      int GetClampedColumn (int column, int len) {
+         var col = column - len / 2;
+         if (col < 0) return 0;
+         if (col + len > WindowWidth) return WindowWidth - len;
+         return col;
+      }
    }
 
    // Helper used by the parser (maps operator sequences to E values)

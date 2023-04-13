@@ -6,26 +6,29 @@ using System.Xml.Linq;
 public class ExprXMLGen : Visitor<XElement> {
 
    public override XElement Visit (NLiteral literal)
-      => new ("Literal", new XAttribute ("Value", literal.Value.Text)
-                       , new XAttribute ("Type", literal.Type.ToString ()));
+      => NewNode ("Literal", ("Value", literal.Value.Text)
+                           , ("Type", literal.Type));
 
    public override XElement Visit (NIdentifier identifier)
-      => new ("Ident", new XAttribute ("Name", identifier.Name)
-                     , new XAttribute ("Type", identifier.Type.ToString ()));
+      => NewNode ("Ident", ("Name", identifier.Name.Text)
+                                  , ("Type", identifier.Type));
 
    public override XElement Visit (NUnary unary) {
       var a = unary.Expr.Accept (this);
-      XElement elem =  new ("Unary", new XAttribute ("Op", unary.Op.Kind.ToString ())
-                         , new XAttribute ("Type", unary.Type.ToString ()));
+      var elem =  NewNode ("Unary", ("Op", unary.Op.Kind)
+                                  , ("Type", unary.Type));
       elem.Add (a);
       return elem;
    }
 
    public override XElement Visit (NBinary binary) {
       var a= binary.Left.Accept (this); var b = binary.Right.Accept (this);
-      XElement elem = new ("Binary", new XAttribute ("Op", binary.Op.Kind.ToString ())
-                          , new XAttribute ("Type", binary.Type.ToString ()));
+      var elem = NewNode ("Binary", ("Op", binary.Op.Kind)
+                                  , ("Type", binary.Type));
       elem.Add (a); elem.Add (b);
       return elem;
    }
+
+   XElement NewNode (string name, params (string, object)[] attribs)
+       => new XElement (name, attribs.Select (a => new XAttribute (a.Item1, a.Item2)));
 }

@@ -54,17 +54,10 @@ public class Token {
             var err = new string (' ', line.Length).ToCharArray ();
             err[col - 1] = '^';
             WriteLine (new string (err));
-            CursorLeft = GetClampedColumn (col, Text.Length);
+            CursorLeft = Math.Clamp (col - Text.Length / 2, 0, WindowWidth - Text.Length);
             WriteLine (Text);
             ResetColor ();
          }
-      }
-
-      int GetClampedColumn (int column, int len) {
-         var col = column - len / 2;
-         if (col < 0) return 0;
-         if (col + len > WindowWidth) return WindowWidth - len;
-         return col;
       }
    }
 

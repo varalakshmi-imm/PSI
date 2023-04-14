@@ -30,5 +30,5 @@ public class ExprXMLGen : Visitor<XElement> {
    }
 
    XElement NewNode (string name, params (string, object)[] attribs)
-       => new XElement (name, attribs.Select (a => new XAttribute (a.Item1, a.Item2)));
+       => new (name, attribs.Select (a => new XAttribute (a.Item1, a.Item2)));
 }

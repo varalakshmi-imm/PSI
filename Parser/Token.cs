@@ -51,11 +51,8 @@ public class Token {
          if (i == Line  - 1) { // This is the line that has error
             int col = Column + 5; // As we have added line number as four digits and the vertical line
             ForegroundColor = ConsoleColor.Yellow;
-            var err = new string (' ', line.Length).ToCharArray ();
-            err[col - 1] = '^';
-            WriteLine (new string (err));
-            CursorLeft = Math.Clamp (col - Text.Length / 2, 0, WindowWidth - Text.Length);
-            WriteLine (Text);
+            WriteLine (new string (' ', col - 1) + '^');
+            WriteLine (new string (' ', Math.Clamp (col - Text.Length / 2, 0, WindowWidth - Text.Length)) + Text);
             ResetColor ();
          }
       }

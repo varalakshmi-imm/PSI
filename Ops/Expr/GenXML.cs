@@ -6,29 +6,25 @@ using System.Xml.Linq;
 public class ExprXMLGen : Visitor<XElement> {
 
    public override XElement Visit (NLiteral literal)
-      => NewNode ("Literal", ("Value", literal.Value.Text)
-                           , ("Type", literal.Type));
+      => New ("Literal", ("Value", literal.Value.Text), ("Type", literal.Type));
 
    public override XElement Visit (NIdentifier identifier)
-      => NewNode ("Ident", ("Name", identifier.Name.Text)
-                                  , ("Type", identifier.Type));
+      => New ("Ident", ("Name", identifier.Name.Text), ("Type", identifier.Type));
 
-   public override XElement Visit (NUnary unary) {
-      var a = unary.Expr.Accept (this);
-      var elem =  NewNode ("Unary", ("Op", unary.Op.Kind)
-                                  , ("Type", unary.Type));
-      elem.Add (a);
-      return elem;
+   public override XElement Visit (NUnary unary)
+      => New ("Unary", ("Op", unary.Op.Kind), ("Type", unary.Type), unary.Expr.Accept (this));
+
+   public override XElement Visit (NBinary binary)
+      => New ("Binary", ("Op", binary.Op.Kind), ("Type", binary.Type)
+                      , binary.Left.Accept (this), binary.Right.Accept (this));
+
+   XElement New (string name, params object[] data) {
+      var node = new XElement (name);
+      foreach (var d in data) {
+         if (d is (string K, object V)) node.SetAttributeValue (K, V);
+         else if (d is XElement x) node.Add (d);
+         else throw new NotImplementedException ();
+      }
+      return node;
    }
-
-   public override XElement Visit (NBinary binary) {
-      var a= binary.Left.Accept (this); var b = binary.Right.Accept (this);
-      var elem = NewNode ("Binary", ("Op", binary.Op.Kind)
-                                  , ("Type", binary.Type));
-      elem.Add (a); elem.Add (b);
-      return elem;
-   }
-
-   XElement NewNode (string name, params (string, object)[] attribs)
-       => new (name, attribs.Select (a => new XAttribute (a.Item1, a.Item2)));
 }

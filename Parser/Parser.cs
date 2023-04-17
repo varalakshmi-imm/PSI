@@ -72,7 +72,7 @@ public class Parser {
       Expect (OPEN, "Expecting function call '(' ");
       List<NExpr> exprs = new ();
       if (!Peek (CLOSE)) exprs.Add (Expression ());
-      while (Peek (COMMA)) { if (Match (COMMA)) exprs.Add (Expression ()); }
+      while (Match (COMMA)) exprs.Add (Expression ());
       Expect (CLOSE, "Expecting ')'");
       return exprs.ToArray ();
    }

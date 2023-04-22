@@ -15,12 +15,12 @@ public record NProgram (Token Name, NBlock Block) : Node {
 }
 
 // A block contains declarations and a body
-public record NBlock (NDeclarations Decls, NCompoundStmt Body) : Node {
+public record NBlock (NDeclarations Decls, NStmt Body) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
 // The declarations section precedes the body of every block
-public record NDeclarations (NVarDecl[] Vars) : Node {
+public record NDeclarations (NVarDecl[] Vars, NFnDecl[] Funcs) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
@@ -28,6 +28,12 @@ public record NDeclarations (NVarDecl[] Vars) : Node {
 public record NVarDecl (Token Name, NType Type) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
+
+// Declares a function (with a type) or procedure
+public record NFnDecl (bool Procedure, Token Name, NVarDecl[] Vars, NType Type, NBlock Block) : Node {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
 #endregion
 
 #region Statements -------------------------------------------------------------
@@ -46,6 +52,36 @@ public record NWriteStmt (bool NewLine, NExpr[] Exprs) : NStmt {
 
 // An assignment statement
 public record NAssignStmt (Token Name, NExpr Expr) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A read statement
+public record NReadStmt (Token[] Tokens) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A call statement 
+public record NCallStmt (Token Name, NExpr[] Exprs) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A if statement 
+public record NIfStmt (NExpr Expr, NStmt[] Stmts) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A for-stmt
+public record NForStmt (Token Name, NExpr Expr, Token ToDownto, NExpr Expr2, NStmt Stmt) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A while-stmt
+public record NWhileStmt (NExpr Expr, NStmt Stmt) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+//A repeat-stmt
+public record NRepeatStmt (NStmt[] Stmts, NExpr Expr) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 #endregion

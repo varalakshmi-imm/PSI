@@ -15,7 +15,7 @@ public class Tokenizer {
    string[]? mLines;
 
    /// <summary>The source file from which the code has been read in</summary>
-   public string FileName => "untitled.pas";
+   public string FileName;
 
    // Returns the next token (returns EOF token if no more are left)
    public Token Next () {

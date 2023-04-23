@@ -52,45 +52,45 @@ public class PSIPrint : Visitor<StringBuilder> {
 
    public override StringBuilder Visit (NReadStmt r) {
       NWrite ("read (");
-      for (int i = 0; i < r.Tokens.Length; i++) {
+      for (int i = 0; i < r.Vars.Length; i++) {
          if (i > 0) Write (", ");
-         Write (r.Tokens[i].Text);
+         Write (r.Vars[i].Text);
       }
       return Write (");");
    }
 
    public override StringBuilder Visit (NCallStmt c) {
-      NWrite ($"{c.Name} (");
-      for (int i = 0; i < c.Exprs.Length; i++) {
+      NWrite ($"{c.FnName} (");
+      for (int i = 0; i < c.Args.Length; i++) {
          if (i > 0) Write (", ");
-         c.Exprs[i].Accept (this);
+         c.Args[i].Accept (this);
       }
       return Write (");");
    }
    public override StringBuilder Visit (NIfStmt ifStmt) {
       NWrite ($"if ");
-      ifStmt.Expr.Accept (this);
-      Write (" then "); N++; ifStmt.Stmts[0].Accept (this); N--;
-      for (int i = 1; i < ifStmt.Stmts.Length; i++) {
+      ifStmt.Condition.Accept (this);
+      Write (" then "); N++; ifStmt.ThenStmt.Accept (this); N--;
+      if (ifStmt.ElseStmt != null) {
          NWrite ("else "); N++;
-         ifStmt.Stmts[i].Accept (this);
+         ifStmt.ElseStmt.Accept (this);
          N--;
       }
       return S;
    }
    public override StringBuilder Visit (NForStmt f) {
-      NWrite ($"for {f.Name} := ");
-      f.Expr.Accept (this);
-      Write ($" {f.ToDownto.Text} ");
-      f.Expr2.Accept (this);
-      Write (" do"); N++; f.Stmt.Accept (this);
-      if (f.Stmt is NCompoundStmt) Write (";"); N--;
+      NWrite ($"for {f.Var.Text} := ");
+      f.Start.Accept (this);
+      Write (f.Descending ? " downto " : " to ");
+      f.End.Accept (this);
+      Write (" do"); N++; f.Body.Accept (this);
+      if (f.Body is NCompoundStmt) Write (";"); N--;
       return S;
    }
 
    public override StringBuilder Visit (NWhileStmt w) {
-      NWrite ("While "); w.Expr.Accept (this);
-      Write (" do "); w.Stmt.Accept (this);
+      NWrite ("While "); w.Condition.Accept (this);
+      Write (" do "); w.Body.Accept (this);
       return Write (";");
    }
 
@@ -100,7 +100,7 @@ public class PSIPrint : Visitor<StringBuilder> {
          r.Stmts[i].Accept (this);
       N--;
       NWrite ("until ");
-      r.Expr.Accept (this);
+      r.Condition.Accept (this);
       return Write (";");
    }
 

@@ -56,32 +56,32 @@ public record NAssignStmt (Token Name, NExpr Expr) : NStmt {
 }
 
 // A read statement
-public record NReadStmt (Token[] Tokens) : NStmt {
+public record NReadStmt (Token[] Vars) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
 // A call statement 
-public record NCallStmt (Token Name, NExpr[] Exprs) : NStmt {
+public record NCallStmt (Token FnName, NExpr[] Args) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
 // A if statement 
-public record NIfStmt (NExpr Expr, NStmt[] Stmts) : NStmt {
+public record NIfStmt (NExpr Condition, NStmt ThenStmt, NStmt? ElseStmt) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
 // A for-stmt
-public record NForStmt (Token Name, NExpr Expr, Token ToDownto, NExpr Expr2, NStmt Stmt) : NStmt {
+public record NForStmt (Token Var, NExpr Start, bool Descending, NExpr End, NStmt Body) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
 // A while-stmt
-public record NWhileStmt (NExpr Expr, NStmt Stmt) : NStmt {
+public record NWhileStmt (NExpr Condition, NStmt Body) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
 //A repeat-stmt
-public record NRepeatStmt (NStmt[] Stmts, NExpr Expr) : NStmt {
+public record NRepeatStmt (NStmt[] Stmts, NExpr Condition) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 #endregion

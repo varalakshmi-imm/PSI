@@ -62,7 +62,7 @@ public class Parser {
       bool procedure = Prev.Kind == PROCEDURE;
       var name = Expect (IDENT); 
       var plist = ParamList ();
-      var type = Unknown;
+      var type = Void;
       if (!procedure) { Expect (COLON); type = Type (); }
       Expect (SEMI);
       var block = Block ();
@@ -140,17 +140,17 @@ public class Parser {
 
    //if-stmt = "if" expression "then" statement ";" ["else" statement ";"] .
    NIfStmt IfStmt () {
-      var expr = Expression (); Expect (THEN);
-      List<NStmt> stmts = new () { Stmt () }; Expect (SEMI);
-      while (Match (ELSE)) { stmts.Add (Stmt ()); Expect (SEMI); }
-      return new (expr, stmts.ToArray ());
+      var condition = Expression (); Expect (THEN);
+      var thenStmt = Stmt (); Expect (SEMI);
+      NStmt? elseStmt = null; if (Match (ELSE)) { elseStmt = Stmt (); Expect (SEMI); }
+      return new (condition, thenStmt, elseStmt);
    }
 
    //while-stmt = "while" expression "do" statement ";".
    NWhileStmt WhileStmt () {
-      var expr = Expression (); Expect (DO);
-      var st = Stmt (); Expect (SEMI);
-      return new (expr, st);
+      var cond = Expression (); Expect (DO);
+      var body = Stmt (); Expect (SEMI);
+      return new (cond, body);
    }
 
    //repeat-stmt  = "repeat" statement { ";" statement ";" } "until" expression.
@@ -158,19 +158,19 @@ public class Parser {
       List<NStmt> stmts = new () { Stmt () };
       Expect (SEMI);
       while (!Match (UNTIL)) { stmts.Add (Stmt ()); Expect (SEMI); }
-      var expr = Expression ();
-      return new (stmts.ToArray (), expr);
+      var cond = Expression ();
+      return new (stmts.ToArray (), cond);
    }
 
    //for-stmt = "for" IDENT ":=" expression ("to" | "downto") expression "do" statement.
    NForStmt ForStmt () {
       Expect (IDENT);
-      var tok = Prev; Expect (ASSIGN);
-      var expr = Expression ();
-      Expect (TO, DOWNTO); var ident = Prev;
-      var expr2 = Expression ();
-      Expect (DO); var st = Stmt ();
-      return new (tok, expr, ident, expr2, st);
+      var var = Prev; Expect (ASSIGN);
+      var start = Expression ();
+      bool descending = Expect (TO, DOWNTO).Kind == DOWNTO;
+      var end = Expression ();
+      Expect (DO); var body = Stmt ();
+      return new (var, start, descending, end, body);
    }
    #endregion
 

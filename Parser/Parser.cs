@@ -28,8 +28,9 @@ public class Parser {
    NBlock Block ()
       => new (Declarations (), CompoundStmt ());
 
-   // declarations = [var-decls] [procfn-decls] .
+   // declarations = [const-decls] [var-decls] [procfn-decls] .
    NDeclarations Declarations () {
+      var constants = Match (CONST) ? ConstDecls () : new NConstDecl[0];
       var variables = Match (VAR) ? VarDecls () : new NVarDecl[0];
       List<NFnDecl> funcs = new ();
       while (Match (FUNCTION, PROCEDURE)) {
@@ -40,7 +41,7 @@ public class Parser {
          Expect (SEMI);
          funcs.Add (new NFnDecl (name, pars, rtype, Block ()));
       }
-      return new (variables, funcs.ToArray ());
+      return new (constants, variables, funcs.ToArray ());
    }
 
    // ident-list = IDENT { "," IDENT }
@@ -50,7 +51,7 @@ public class Parser {
       return names.ToArray (); 
    }
 
-   // var-decl = ident-list ":" type
+   // var-decl = ident-list ":" type ";"
    NVarDecl[] VarDecls () {
       List<NVarDecl> vars = new ();
       while (Peek (IDENT)) {
@@ -61,6 +62,17 @@ public class Parser {
       return vars.ToArray ();
    }
 
+   // const-decl = IDENT ":=" INTEGER | REAL | STRING | CHAR | BOOL ";"
+   NConstDecl[] ConstDecls () {
+      List<NConstDecl> consts = new List<NConstDecl> ();
+      while (Peek (IDENT)) {
+         var name = Expect (IDENT); Expect (EQ);
+         if (Match (L_INTEGER, L_REAL, L_BOOLEAN, L_CHAR, L_STRING))
+         consts.Add (new NConstDecl (name, new NLiteral (Prev)));
+         Match (SEMI);
+      }
+      return consts.ToArray ();
+   }
    // type = integer | real | boolean | string | char
    NType Type () {
       var token = Expect (INTEGER, REAL, BOOLEAN, STRING, CHAR);

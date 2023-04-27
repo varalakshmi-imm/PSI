@@ -15,6 +15,9 @@ public class PSIPrint : Visitor<StringBuilder> {
 
    public override StringBuilder Visit (NDeclarations d) {
       if (d.Vars.Length > 0) {
+         NWrite ("const"); N++;
+         foreach (var c in d.Consts) c.Accept (this);
+         N--;
          NWrite ("var"); N++;
          foreach (var g in d.Vars.GroupBy (a => a.Type))
             NWrite ($"{g.Select (a => a.Name).ToCSV ()} : {g.Key};");
@@ -26,6 +29,9 @@ public class PSIPrint : Visitor<StringBuilder> {
 
    public override StringBuilder Visit (NVarDecl d)
       => NWrite ($"{d.Name} : {d.Type}");
+
+   public override StringBuilder Visit (NConstDecl c) 
+      => NWrite ($"{c.Name.Text} : {c.Literal.Type} = {c.Literal.Value};");
 
    public override StringBuilder Visit (NFnDecl f) {
       NWrite (f.Return == NType.Void ? "procedure " : "function ");

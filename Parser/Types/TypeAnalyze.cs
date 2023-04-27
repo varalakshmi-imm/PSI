@@ -23,7 +23,13 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NDeclarations d) {
-      Visit (d.Vars); return Visit (d.Funcs);
+      Visit (d.Consts); Visit (d.Vars); return Visit (d.Funcs);
+   }
+
+   public override NType Visit (NConstDecl c) {
+      c.Literal.Accept (this);
+      mSymbols.Consts.Add (c);
+      return c.Literal.Type;
    }
 
    public override NType Visit (NVarDecl d) {
@@ -42,11 +48,14 @@ public class TypeAnalyze : Visitor<NType> {
       => Visit (b.Stmts);
 
    public override NType Visit (NAssignStmt a) {
-      if (mSymbols.Find (a.Name.Text) is not NVarDecl v)
+      var x = mSymbols.Find (a.Name.Text);
+      if (x is not NVarDecl or NConstDecl)
          throw new ParseException (a.Name, "Unknown variable");
-      a.Expr.Accept (this);
-      a.Expr = AddTypeCast (a.Name, a.Expr, v.Type);
-      return v.Type;
+      if (x is NVarDecl v) {
+         a.Expr.Accept (this);
+         a.Expr = AddTypeCast (a.Name, a.Expr, v.Type);
+         return v.Type;
+      } else return ((NConstDecl)x).Literal.Type;
    }
    
    NExpr AddTypeCast (Token token, NExpr source, NType target) {
@@ -134,9 +143,11 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NIdentifier d) {
-      if (mSymbols.Find (d.Name.Text) is NVarDecl v) 
-         return d.Type = v.Type;
-      throw new ParseException (d.Name, "Unknown variable");
+      return mSymbols.Find (d.Name.Text) switch {
+         NVarDecl v => d.Type = v.Type,
+         NConstDecl c => d.Type = c.Literal.Type,
+         _ => throw new ParseException (d.Name, "Unknown variable")
+      };
    }
 
    public override NType Visit (NFnCall f) {

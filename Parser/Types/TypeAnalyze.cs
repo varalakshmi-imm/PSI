@@ -27,18 +27,21 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NConstDecl c) {
+      VerifyDecls (c.Name);
       c.Literal.Accept (this);
       mSymbols.Consts.Add (c);
       return c.Literal.Type;
    }
 
    public override NType Visit (NVarDecl d) {
+      VerifyDecls (d.Name);
       mSymbols.Vars.Add (d);
       return d.Type;
    }
 
    public override NType Visit (NFnDecl f) {
-      mSymbols.Funcs.Add (f);
+      VerifyDecls (f.Name); mSymbols.Funcs.Add (f);
+      Visit (f.Params); f.Body?.Accept (this);
       return f.Return;
    }
    #endregion
@@ -48,14 +51,17 @@ public class TypeAnalyze : Visitor<NType> {
       => Visit (b.Stmts);
 
    public override NType Visit (NAssignStmt a) {
-      var x = mSymbols.Find (a.Name.Text);
-      if (x is not NVarDecl or NConstDecl)
-         throw new ParseException (a.Name, "Unknown variable");
-      if (x is NVarDecl v) {
-         a.Expr.Accept (this);
-         a.Expr = AddTypeCast (a.Name, a.Expr, v.Type);
-         return v.Type;
-      } else return ((NConstDecl)x).Literal.Type;
+      var node = mSymbols.Find (a.Name.Text);
+      a.Expr.Accept (this);
+      switch (node) {
+         case NVarDecl v: {
+            a.Expr = AddTypeCast (a.Name, a.Expr, v.Type);
+            return v.Type;
+         }
+         case NConstDecl c: return c.Literal.Type;
+         case NFnDecl f: return f.Return;
+         default: throw new ParseException (a.Name, "Unknown variable");
+      }
    }
    
    NExpr AddTypeCast (Token token, NExpr source, NType target) {
@@ -83,7 +89,7 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NReadStmt r) {
-      throw new NotImplementedException ();
+      return Void;
    }
 
    public override NType Visit (NWhileStmt w) {
@@ -97,7 +103,8 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NCallStmt c) {
-      throw new NotImplementedException ();
+      VerifyFunction (c.Name, c.Params, out NType type);
+      return type;
    }
    #endregion
 
@@ -146,12 +153,14 @@ public class TypeAnalyze : Visitor<NType> {
       return mSymbols.Find (d.Name.Text) switch {
          NVarDecl v => d.Type = v.Type,
          NConstDecl c => d.Type = c.Literal.Type,
+         NFnDecl f => d.Type = f.Return,
          _ => throw new ParseException (d.Name, "Unknown variable")
       };
    }
 
    public override NType Visit (NFnCall f) {
-      throw new NotImplementedException ();
+      VerifyFunction (f.Name, f.Params, out NType type);
+      return f.Type = type;
    }
 
    public override NType Visit (NTypeCast c) {
@@ -159,8 +168,38 @@ public class TypeAnalyze : Visitor<NType> {
    }
    #endregion
 
+   #region Helpers -----------------------------------------
    NType Visit (IEnumerable<Node> nodes) {
       foreach (var node in nodes) node.Accept (this);
       return NType.Void;
    }
+
+   void VerifyDecls (Token token) {
+      var name = token.Text;
+      var node = mSymbols.Find (name, true);
+      if (node == null) return;
+      var s = node switch {
+         NVarDecl => "Variable",
+         NConstDecl => "Constant",
+         NFnCall => "Function / Procedure",
+         _ => throw new NotImplementedException ()
+      };
+      throw new ParseException (token, $"{s} with the same name '{name}' declared in the same block");
+   }
+
+   void VerifyFunction (Token token, NExpr[] parameters, out NType type) {
+      if (mSymbols.Find (token.Text) is NFnDecl fd) {
+         if (fd.Params.Length != parameters.Length)
+            throw new ParseException (token, $"Mismatch in the number of parameters to {token.Text}");
+         for (int n = 0; n < fd.Params.Length; n++) {
+            var (param, fdParam) = (parameters[n], fd.Params[n]);
+            param.Accept (this);
+            param = AddTypeCast (token, param, fdParam.Type);
+            if (fdParam.Type == param.Type) continue;
+            throw new ParseException (token, $"Mismatch in the type of parameters to {token.Text}");
+         }
+         type = fd.Return;
+      } else throw new ParseException (token, "Unknown function");
+   }
+   #endregion
 }

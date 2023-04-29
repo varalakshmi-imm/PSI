@@ -14,10 +14,12 @@ public class PSIPrint : Visitor<StringBuilder> {
       => Visit (b.Declarations, b.Body);
 
    public override StringBuilder Visit (NDeclarations d) {
-      if (d.Vars.Length > 0) {
+      if (d.Consts.Length > 0) {
          NWrite ("const"); N++;
          foreach (var c in d.Consts) c.Accept (this);
          N--;
+      }
+      if (d.Vars.Length > 0) {
          NWrite ("var"); N++;
          foreach (var g in d.Vars.GroupBy (a => a.Type))
             NWrite ($"{g.Select (a => a.Name).ToCSV ()} : {g.Key};");

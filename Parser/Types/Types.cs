@@ -14,14 +14,14 @@ public class SymTable {
    public List<NFnDecl> Funcs = new ();
    public SymTable? Parent;
 
-   public Node? Find (string name) {
+   public Node? Find (string name, bool checkLocal = false) {
       var node0 = Consts.FirstOrDefault (a => a.Name.Text.EqualsIC (name));
       if (node0 != null) return node0;
       var node1 = Vars.FirstOrDefault (a => a.Name.Text.EqualsIC (name));
       if (node1 != null) return node1;
       var node2 = Funcs.FirstOrDefault (a => a.Name.Text.EqualsIC (name));
       if (node2 != null) return node2;
-      return Parent?.Find (name);
+      return (checkLocal) ? null : Parent?.Find (name, checkLocal);
    }
 
    // Contains symbols for the PSILib runtime library

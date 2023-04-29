@@ -68,7 +68,7 @@ public class Parser {
       while (Peek (IDENT)) {
          var name = Expect (IDENT); Expect (EQ);
          if (Match (L_INTEGER, L_REAL, L_BOOLEAN, L_CHAR, L_STRING))
-         consts.Add (new NConstDecl (name, new NLiteral (Prev)));
+            consts.Add (new NConstDecl (name, new NLiteral (Prev)));
          Match (SEMI);
       }
       return consts.ToArray ();

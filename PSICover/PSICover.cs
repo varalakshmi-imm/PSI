@@ -173,10 +173,15 @@ class Analyzer {
             bool hit = cHits > 0;
             string tag = hit ? $"<span class=\"hit\" title= \"{cHits} hits\">" : "<span class=\"unhit\">", closetag = "</span>";
             if (hit) cCovered++;
-            for (int n = block.SLine; n <= block.ELine; n++) {
-               var line = code[n];
-               line = line.Insert (line.Length, closetag);
-               code[n] = line.Insert (line.TakeWhile (char.IsWhiteSpace).Count (), tag);
+            if (block.ELine == block.SLine) {
+               code[block.ELine] = code[block.ELine].Insert (block.ECol, closetag);
+               code[block.SLine] = code[block.SLine].Insert (block.SCol, tag);
+            } else {
+               for (int n = block.ELine; n >= block.SLine; n--) {
+                  var line = code[n];
+                  line = line.Insert (line.Length, closetag);
+                  code[n] = line.Insert (line.TakeWhile (char.IsWhiteSpace).Count (), tag);
+               }
             }
          }
          summarylist.Add (new (Path.GetFileName (file), blocks.Count, cCovered, Math.Round (100.0 * cCovered / blocks.Count, 1)));

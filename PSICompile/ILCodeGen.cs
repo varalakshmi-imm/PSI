@@ -66,9 +66,34 @@ public class ILCodeGen : Visitor {
       }
       if (w.NewLine) Out ("    call void [System.Console]System.Console::WriteLine ()");
    }
-   
-   public override void Visit (NIfStmt f) => throw new NotImplementedException ();
-   public override void Visit (NForStmt f) => throw new NotImplementedException ();
+
+   public override void Visit (NIfStmt f) {
+      string lab1 = NextLabel (), lab2 = NextLabel (), lab3 = NextLabel ();
+      Out ($"    br {lab2}");
+      Out ($"  {lab1}:"); f.IfPart.Accept (this); Out ($"    br {lab3}");
+      Out ($"  {lab2}:"); f.Condition.Accept (this); 
+      Out ("    ldc.i4.1\n    ceq");
+      Out ($"    brtrue {lab1}");
+      if (f.ElsePart != null) f.ElsePart.Accept (this);
+      Out ($"  {lab3}:"); Out ("  nop");
+   }
+   public override void Visit (NForStmt f) {
+      string lab1 = NextLabel (), lab2 = NextLabel ();
+      f.Start.Accept (this); StoreVar (f.Var);
+      Out ($"    br {lab2}");
+      Out ($"  {lab1}:");
+      f.Body.Accept (this);
+      Visit (new NIdentifier (f.Var));
+      Out ($"    ldc.i4 1");
+      Out (f.Ascending ? "    add" : "    sub");
+      StoreVar (f.Var);
+      Out ($"  {lab2}:");
+      Visit (new NIdentifier (f.Var));
+
+      f.End.Accept (this);
+      Out (f.Ascending ? "    cgt\n    ldc.i4.0\n    ceq" : "    clt\n    ldc.i4.0\n    ceq");
+      Out ($"    brtrue {lab1}");
+   }
    public override void Visit (NReadStmt r) => throw new NotImplementedException ();
 
    public override void Visit (NWhileStmt w) {
@@ -121,7 +146,9 @@ public class ILCodeGen : Visitor {
    public override void Visit (NUnary u) {
       u.Expr.Accept (this);
       string op = u.Op.Kind.ToString ().ToLower ();
-      op = op switch { "sub" => "neg", _ => op };
+      op = op switch { "sub" => "neg"
+                       , "not" => "ldc.i4.0\n    ceq"
+                       , _ => op };
       Out ($"    {op}");
    }
 
@@ -131,7 +158,11 @@ public class ILCodeGen : Visitor {
          Out ("    call string [System.Runtime]System.String::Concat (string, string)");
       else {
          string op = b.Op.Kind.ToString ().ToLower ();
-         op = op switch { "mod" => "rem", "eq" => "ceq", "lt" => "clt", _ => op };
+         op = op switch { "mod" => "rem", "eq" => "ceq", "lt" => "clt", "gt" => "cgt"
+                         , "leq" => "cgt\n    ldc.i4.0\n    ceq"
+                         , "geq" => "clt\n    ldc.i4.0\n    ceq"
+                         , "neq" => "ceq\n    ldc.i4.0\n    ceq"
+                         , _ => op };
          Out ($"    {op}");
       }
    }
@@ -144,7 +175,7 @@ public class ILCodeGen : Visitor {
          (NType.Integer, NType.Real) => "    conv.r8",
          (NType.Integer, NType.String) => "   call string [PSILib]PSILib.Helper::CIntStr (int32)",
          _ => throw new NotImplementedException ()
-      });   
+      });
    }
 
    // Helpers ......................................

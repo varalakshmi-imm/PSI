@@ -34,7 +34,7 @@ class TypeAnalyze : Visitor<NType> {
 
    public override NType Visit (NFnDecl f) {
       mSymbols.Add (f);
-      mSymbols = new SymTable { Parent = mSymbols };
+      mSymbols = new SymTable { Parent = mSymbols, Local = true };
       f.Params.ForEach (v => { mSymbols.Add (v); v.Assigned = true; });
       if (f.Block != null) {
          f.Block.Accept (this);

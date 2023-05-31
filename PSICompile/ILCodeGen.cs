@@ -27,7 +27,9 @@ public class ILCodeGen : Visitor {
    }
    SymTable mSymbols = SymTable.Root;
 
-   public override void Visit (NBlock b) => throw new NotImplementedException ();
+   public override void Visit (NBlock b) {
+      Visit (b.Declarations); Visit (b.Body);
+   }
 
    public override void Visit (NDeclarations d) {
       Visit (d.Consts); Visit (d.Vars); Visit (d.Funcs);
@@ -39,10 +41,22 @@ public class ILCodeGen : Visitor {
 
    public override void Visit (NVarDecl v) {
       mSymbols.Add (v);
-      Out ($"    .field static {TMap[v.Type]} {v.Name}");
+      if (v.Local) Out ($"    .locals init ({TMap[v.Type]} {v.Name})");
+      else Out ($"    .field static {TMap[v.Type]} {v.Name}");
    }
 
-   public override void Visit (NFnDecl f) => throw new NotImplementedException ();
+   public override void Visit (NFnDecl f) {
+      mSymbols.Add (f);
+      mSymbols = new SymTable { Parent = mSymbols, Local = true };
+      f.Params.ForEach (v => { mSymbols.Add (v); v.Assigned = true; v.Argument = true; });
+      var ch = '{';
+      var rType = TMap[f.Return];
+      Out ($"  .method static {rType} {f.Name} ({f.Params.Select (a => $"{TMap[a.Type]} {a.Name}").ToCSV ()}) {ch}");
+      f.Block?.Accept (this);
+      Out ("    ret");
+      Out ("  }");
+      mSymbols = mSymbols.Parent;
+   }
 
    public override void Visit (NCompoundStmt b) =>
       Visit (b.Stmts);
@@ -53,10 +67,15 @@ public class ILCodeGen : Visitor {
    }
 
    void StoreVar (Token name) {
-      var vd = (NVarDecl)mSymbols.Find (name)!;
-      var type = TMap[vd.Type];
-      if (vd.Local) Out ($"    stloc {vd.Name}");
-      else Out ($"    stsfld {type} Program::{vd.Name}");
+      switch (mSymbols.Find (name)) {
+         case NVarDecl v:
+            string type = TMap[v.Type];
+            if (v.Local) Out ($"    stloc {v.Name}");
+            else Out ($"    stsfld {type} Program::{v.Name}"); 
+            break;
+         case NFnDecl f: break;
+         default: throw new NotImplementedException ();
+      }
    }
 
    public override void Visit (NWriteStmt w) {
@@ -116,8 +135,9 @@ public class ILCodeGen : Visitor {
    string NextLabel () => $"IL_{++mLabel:D4}";
    int mLabel;
 
-   
-   public override void Visit (NCallStmt c) => throw new NotImplementedException ();
+
+   public override void Visit (NCallStmt c) =>
+      GenFunctionCall (c.Name, c.Params);
 
    public override void Visit (NLiteral t) {
       var v = t.Value;
@@ -136,8 +156,12 @@ public class ILCodeGen : Visitor {
          case NConstDecl cd: Visit (cd.Value); break;
          case NVarDecl vd:
             var type = TMap[vd.Type];
-            if (vd.Local) Out ($"    ldloc {vd.Name}");
-            else Out ($"    ldsfld {type} Program::{vd.Name}");
+            if (vd.Argument) Out ($"    ldarg {vd.Name}");
+            else if (vd.Local) Out ($"    ldloc {vd.Name}");
+            else {
+               var lib = vd.StdLib ? "[PSILib]PSILib.Lib" : "Program";
+               Out ($"    ldsfld {type} {lib}::{vd.Name}");
+            }
             break;
          default: throw new NotImplementedException ();
       }
@@ -166,8 +190,9 @@ public class ILCodeGen : Visitor {
          Out ($"    {op}");
       }
    }
-   
-   public override void Visit (NFnCall f) => throw new NotImplementedException ();
+
+   public override void Visit (NFnCall f) =>
+      GenFunctionCall (f.Name, f.Params);
 
    public override void Visit (NTypeCast t) {
       t.Expr.Accept (this);
@@ -193,6 +218,15 @@ public class ILCodeGen : Visitor {
    int BoolToInt (Token token)
       => token.Text.EqualsIC ("TRUE") ? 1 : 0;
 
+   void GenFunctionCall (Token token, NExpr[] parameters) {
+      Visit (parameters);
+      string type, lib = "Program";
+      switch (mSymbols.Find (token)) {
+         case NFnDecl fn: type = TMap[fn.Return]; if (fn.StdLib) lib = "[PSILib]PSILib.Lib"; break;
+         default: throw new NotImplementedException ();
+      }
+      Out ($"    call {type} {lib}::{token.Text} ({parameters.Select (a => TMap[a.Type]).ToCSV ()})");
+   }
    // Dictionary that maps PSI.NType to .Net type names
    static Dictionary<NType, string> TMap = new () {
       [NType.String] = "string", [NType.Integer] = "int32", [NType.Real] = "float64",

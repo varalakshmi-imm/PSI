@@ -49,9 +49,8 @@ public class ILCodeGen : Visitor {
       mSymbols.Add (f);
       mSymbols = new SymTable { Parent = mSymbols, Local = true };
       f.Params.ForEach (v => { mSymbols.Add (v); v.Assigned = true; v.Argument = true; });
-      var ch = '{';
       var rType = TMap[f.Return];
-      Out ($"  .method static {rType} {f.Name} ({f.Params.Select (a => $"{TMap[a.Type]} {a.Name}").ToCSV ()}) {ch}");
+      Out ($"  .method static {rType} {f.Name} ({f.Params.Select (a => $"{TMap[a.Type]} {a.Name}").ToCSV ()}) {{");
       f.Block?.Accept (this);
       Out ("    ret");
       Out ("  }");
@@ -102,13 +101,12 @@ public class ILCodeGen : Visitor {
       Out ($"    br {lab2}");
       Out ($"  {lab1}:");
       f.Body.Accept (this);
-      Visit (new NIdentifier (f.Var));
+      LoadVar (f.Var);
       Out ($"    ldc.i4 1");
       Out (f.Ascending ? "    add" : "    sub");
       StoreVar (f.Var);
       Out ($"  {lab2}:");
-      Visit (new NIdentifier (f.Var));
-
+      LoadVar (f.Var);
       f.End.Accept (this);
       Out (f.Ascending ? "    cgt\n    ldc.i4.0\n    ceq" : "    clt\n    ldc.i4.0\n    ceq");
       Out ($"    brtrue {lab1}");
@@ -151,8 +149,11 @@ public class ILCodeGen : Visitor {
       });
    }
 
-   public override void Visit (NIdentifier d) {
-      switch (mSymbols.Find (d.Name)) {
+   public override void Visit (NIdentifier d) =>
+      LoadVar (d.Name);
+
+   void LoadVar (Token name) {
+      switch (mSymbols.Find (name)) {
          case NConstDecl cd: Visit (cd.Value); break;
          case NVarDecl vd:
             var type = TMap[vd.Type];
@@ -220,12 +221,15 @@ public class ILCodeGen : Visitor {
 
    void GenFunctionCall (Token token, NExpr[] parameters) {
       Visit (parameters);
-      string type, lib = "Program";
+      string type, name = token.Text, lib = "Program";
       switch (mSymbols.Find (token)) {
-         case NFnDecl fn: type = TMap[fn.Return]; if (fn.StdLib) lib = "[PSILib]PSILib.Lib"; break;
+         case NFnDecl fn:
+            type = TMap[fn.Return]; name = fn.Name.Text;
+            if (fn.StdLib) lib = "[PSILib]PSILib.Lib";
+            break;
          default: throw new NotImplementedException ();
       }
-      Out ($"    call {type} {lib}::{token.Text} ({parameters.Select (a => TMap[a.Type]).ToCSV ()})");
+      Out ($"    call {type} {lib}::{name} ({parameters.Select (a => TMap[a.Type]).ToCSV ()})");
    }
    // Dictionary that maps PSI.NType to .Net type names
    static Dictionary<NType, string> TMap = new () {

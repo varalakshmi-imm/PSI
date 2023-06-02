@@ -50,8 +50,14 @@ public class ILCodeGen : Visitor {
       mSymbols = new SymTable { Parent = mSymbols, Local = true };
       f.Params.ForEach (v => { mSymbols.Add (v); v.Assigned = true; v.Argument = true; });
       var rType = TMap[f.Return];
+      bool hasReturn = rType != "void";
       Out ($"  .method static {rType} {f.Name} ({f.Params.Select (a => $"{TMap[a.Type]} {a.Name}").ToCSV ()}) {{");
+      if (hasReturn) {
+         mSymbols.Add (new NVarDecl (f.Name, f.Return) { Local = true });
+         Out ($"    .locals init ({rType} {f.Name})");
+      }
       f.Block?.Accept (this);
+      if (hasReturn) LoadVar (f.Name);
       Out ("    ret");
       Out ("  }");
       mSymbols = mSymbols.Parent;
@@ -72,7 +78,7 @@ public class ILCodeGen : Visitor {
             if (v.Local) Out ($"    stloc {v.Name}");
             else Out ($"    stsfld {type} Program::{v.Name}"); 
             break;
-         case NFnDecl f: break;
+         case NFnDecl f: Out ($"    stloc {f.Name}"); break;
          default: throw new NotImplementedException ();
       }
    }
@@ -86,14 +92,14 @@ public class ILCodeGen : Visitor {
    }
 
    public override void Visit (NIfStmt f) {
-      string lab1 = NextLabel (), lab2 = NextLabel (), lab3 = NextLabel ();
+      string lab1 = NextLabel (), lab2 = NextLabel ();
+      f.Condition.Accept (this);
+      Out ($"    brfalse {lab1}");
+      f.IfPart.Accept (this); Out ($"    br {lab2}");
+      Out ($"  {lab1}:");
+      f.ElsePart?.Accept (this);
       Out ($"    br {lab2}");
-      Out ($"  {lab1}:"); f.IfPart.Accept (this); Out ($"    br {lab3}");
-      Out ($"  {lab2}:"); f.Condition.Accept (this); 
-      Out ("    ldc.i4.1\n    ceq");
-      Out ($"    brtrue {lab1}");
-      if (f.ElsePart != null) f.ElsePart.Accept (this);
-      Out ($"  {lab3}:"); Out ("  nop");
+      Out ($"  {lab2}:"); Out ("  nop");
    }
    public override void Visit (NForStmt f) {
       string lab1 = NextLabel (), lab2 = NextLabel ();
@@ -108,8 +114,8 @@ public class ILCodeGen : Visitor {
       Out ($"  {lab2}:");
       LoadVar (f.Var);
       f.End.Accept (this);
-      Out (f.Ascending ? "    cgt\n    ldc.i4.0\n    ceq" : "    clt\n    ldc.i4.0\n    ceq");
-      Out ($"    brtrue {lab1}");
+      Out (f.Ascending ? "    cgt" : "    clt");
+      Out ($"    brfalse {lab1}");
    }
    public override void Visit (NReadStmt r) => throw new NotImplementedException ();
 
@@ -161,7 +167,8 @@ public class ILCodeGen : Visitor {
             else if (vd.Local) Out ($"    ldloc {vd.Name}");
             else {
                var lib = vd.StdLib ? "[PSILib]PSILib.Lib" : "Program";
-               Out ($"    ldsfld {type} {lib}::{vd.Name}");
+               if (vd.StdLib) Out ($"    call {type} {lib}::get_{vd.Name} ()");
+               else Out ($"    ldsfld {type} {lib}::{vd.Name}");
             }
             break;
          default: throw new NotImplementedException ();
@@ -227,6 +234,7 @@ public class ILCodeGen : Visitor {
             type = TMap[fn.Return]; name = fn.Name.Text;
             if (fn.StdLib) lib = "[PSILib]PSILib.Lib";
             break;
+         case NVarDecl v: type = TMap[v.Type]; name = v.Name.Text; break;
          default: throw new NotImplementedException ();
       }
       Out ($"    call {type} {lib}::{name} ({parameters.Select (a => TMap[a.Type]).ToCSV ()})");

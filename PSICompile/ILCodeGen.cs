@@ -138,16 +138,15 @@ public class ILCodeGen : Visitor {
          var vd = (NVarDecl)mSymbols.Find (v)!;
          var type = TMap[vd.Type];
          Out ("    call string [System.Console]System.Console::ReadLine ()");
-         if (type == "string") { StoreVar (v); continue; }
-         Out ($"    ldsflda {type} Program::{vd.Name}");
          Out (vd.Type switch {
-            Integer => "    call bool[System.Runtime] System.Int32::TryParse (string, int32 &)",
-            Real => "    call bool [System.Runtime]System.Double::TryParse(string, float64&)",
-            Bool => "    call bool [System.Runtime]System.Boolean::TryParse(string, bool&)",
-            Char => "    call bool [System.Runtime]System.Char::TryParse(string, char&)",
+            String => "    nop",
+            Integer => "    call int32 [System.Runtime]System.Convert::ToInt32(string)",
+            Real => "    call float64 [System.Runtime]System.Convert::ToDouble(string)",
+            Bool => "    call bool [System.Runtime]System.Convert::ToBoolean(string)",
+            Char => "    call char [System.Runtime]System.Convert::ToChar(string)",
             _ => throw new NotImplementedException (),
          });
-         Out ("    pop");
+         StoreVar (v);
       }
    }
 

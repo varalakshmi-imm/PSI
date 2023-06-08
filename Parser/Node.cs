@@ -103,8 +103,8 @@ public record NRepeatStmt (NStmt[] Stmts, NExpr Condition) : NStmt {
    public override void Accept (Visitor visitor) => visitor.Visit (this);
 }
 
-// Read statement
-public record NReadStmt (Token[] Vars) : NStmt {
+// Read or ReadLn statement (NewLine differentiates between the two)
+public record NReadStmt (bool NewLine, Token[] Vars) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
    public override void Accept (Visitor visitor) => visitor.Visit (this);
 }

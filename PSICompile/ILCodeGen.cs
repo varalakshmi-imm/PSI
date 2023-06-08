@@ -132,7 +132,24 @@ public class ILCodeGen : Visitor {
       Out ($"    brfalse {labl1}");
    }
 
-   public override void Visit (NReadStmt r) => throw new NotImplementedException ();
+   public override void Visit (NReadStmt r) {
+      if (r.Vars.Length > 1) throw new NotImplementedException ();
+      foreach (var v in r.Vars) {
+         var vd = (NVarDecl)mSymbols.Find (v)!;
+         var type = TMap[vd.Type];
+         Out ("    call string [System.Console]System.Console::ReadLine ()");
+         if (type == "string") { StoreVar (v); continue; }
+         Out ($"    ldsflda {type} Program::{vd.Name}");
+         Out (vd.Type switch {
+            Integer => "    call bool[System.Runtime] System.Int32::TryParse (string, int32 &)",
+            Real => "    call bool [System.Runtime]System.Double::TryParse(string, float64&)",
+            Bool => "    call bool [System.Runtime]System.Boolean::TryParse(string, bool&)",
+            Char => "    call bool [System.Runtime]System.Char::TryParse(string, char&)",
+            _ => throw new NotImplementedException (),
+         });
+         Out ("    pop");
+      }
+   }
 
    public override void Visit (NWhileStmt w) {
       string lab1 = NextLabel (), lab2 = NextLabel ();

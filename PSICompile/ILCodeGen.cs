@@ -116,6 +116,7 @@ public class ILCodeGen : Visitor {
 
    public override void Visit (NForStmt f) { 
       string labl1 = NextLabel (), labl2 = NextLabel ();
+      AddBreakLbl ();
       f.Start.Accept (this);
       StoreVar (f.Var);
       Out ($"    br {labl2}");
@@ -130,6 +131,7 @@ public class ILCodeGen : Visitor {
       f.End.Accept (this);
       Out (f.Ascending ? "    cgt" : "    clt");
       Out ($"    brfalse {labl1}");
+      OutBreakLbl ();
    }
 
    public override void Visit (NReadStmt r) {
@@ -152,21 +154,30 @@ public class ILCodeGen : Visitor {
 
    public override void Visit (NWhileStmt w) {
       string lab1 = NextLabel (), lab2 = NextLabel ();
+      AddBreakLbl ();
       Out ($"    br {lab2}");
       Out ($"  {lab1}:");
       w.Body.Accept (this);
       Out ($"  {lab2}:");
       w.Condition.Accept (this);
       Out ($"    brtrue {lab1}");
+      OutBreakLbl ();
    }
 
    public override void Visit (NRepeatStmt r) {
       string lab = NextLabel ();
+      AddBreakLbl ();
       Out ($"  {lab}:");
       Visit (r.Stmts);
       r.Condition.Accept (this);
       Out ($"    brfalse {lab}");
+      OutBreakLbl ();
    }
+
+   void AddBreakLbl () => mBreaks.Push (NextLabel ());
+   void OutBreakLbl () => Out ($"    {mBreaks.Pop ()}:");
+   Stack<string> mBreaks = new Stack<string> ();
+
    string NextLabel () => $"IL_{++mLabel:D4}";
    int mLabel;
 
@@ -233,6 +244,8 @@ public class ILCodeGen : Visitor {
          _ => throw new NotImplementedException ()
       });
    }
+
+   public override void Visit (NBreakStmt br) => Out ($"    br {mBreaks.Peek ()}");
 
    // Helpers ......................................
    // Append a line to output (followed by a \n newline)

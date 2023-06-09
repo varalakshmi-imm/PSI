@@ -147,6 +147,8 @@ public class PSIPrint : Visitor<StringBuilder> {
       return Write (");");
    }
 
+   public override StringBuilder Visit (NBreakStmt br) => Write ("break;");
+
    StringBuilder Visit (params Node[] nodes) {
       nodes.ForEach (a => a.Accept (this));
       return S;

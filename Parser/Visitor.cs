@@ -28,6 +28,7 @@ public abstract class Visitor<T> {
    public abstract T Visit (NBinary b);
    public abstract T Visit (NFnCall f);
    public abstract T Visit (NTypeCast t);
+   public abstract T Visit (NBreakStmt br);
 }
 
 // Visitor interface, unparametrized version
@@ -55,4 +56,5 @@ public abstract class Visitor {
    public abstract void Visit (NBinary b);
    public abstract void Visit (NFnCall f);
    public abstract void Visit (NTypeCast t);
+   public abstract void Visit (NBreakStmt br);
 }
